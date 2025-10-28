@@ -278,6 +278,7 @@ jobs:
           timeout: 60
           max-score: 15
 
+      # Build & publish combined summary (console + Summary tab)
       - name: Build & publish combined summary (console + Summary tab)
         shell: bash
         run: |
@@ -341,8 +342,7 @@ jobs:
           }
           NODE
 
-
-      # === Summary (collects Jest JSON, prints ✅/❌) ===
+      # === Summary (optional echo) ===
       - name: Summary (optional)
         shell: bash
         run: |
@@ -379,7 +379,18 @@ jobs:
           console.log(lines.join('\n'));
           NODE
 
-      # === Report to Classroom (NOTE: runners is a single-quoted one-liner) ===
+      # === Reporter expects T_<runner>_RESULTS env vars matching the IDs ===
+      - name: Prepare reporter env
+        shell: bash
+        run: |
+          echo "T_REQUIRED_RESULTS=${{ steps.t_required.outputs.result }}"  >> "$GITHUB_ENV"
+          echo "T_LISTENER_RESULTS=${{ steps.t_listener.outputs.result }}"  >> "$GITHUB_ENV"
+          echo "T_LARGE_RESULTS=${{ steps.t_large.outputs.result }}"        >> "$GITHUB_ENV"
+          echo "T_SMALL_RESULTS=${{ steps.t_small.outputs.result }}"        >> "$GITHUB_ENV"
+          echo "T_XL_RESULTS=${{ steps.t_xl.outputs.result }}"              >> "$GITHUB_ENV"
+          echo "T_CLEAR_RESULTS=${{ steps.t_clear.outputs.result }}"        >> "$GITHUB_ENV"
+
+      # === Report to Classroom (runners must match the IDs above) ===
       - name: Report grades
         uses: classroom-resources/autograding-grading-reporter@v1
         with:
