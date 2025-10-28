@@ -1,3 +1,34 @@
+You're running into a subtle issue with how Jest's `testNamePattern` works. Your workflow is always awarding 100 points because the patterns you're using (`^test name$`) don't match any tests, causing Jest to exit successfully with "0 tests run" for each step.
+
+Here’s a breakdown of the problem and the corrected workflow.
+
+-----
+
+### The Problem: Incorrect Test Pattern
+
+The `testNamePattern` flag in Jest matches against the *full* test name, which includes any parent `describe` block names.
+
+  * **Your `describe` block is:** `'Unit 8.7 – Forms & EventListeners'`
+  * **Your `test` name is:** `'required elements exist'`
+  * **Jest's full test name is:** `'Unit 8.7 – Forms & EventListeners required elements exist'`
+
+Your command, `... --testNamePattern "^required elements exist$"` uses regex anchors (`^` for start, `$` for end) that try to match the *entire* string. Since the full name doesn't start with "required elements exist", your pattern fails to match.
+
+When Jest finds 0 tests matching a pattern, it exits with code 0 (success). The `autograding-command-grader` sees this success code and awards the `max-score` for that step. This happens for all 6 steps, resulting in a 100-point grade every time, even if the code is wrong.
+
+### The Solution: Fix the Regex
+
+To fix this, you just need to **remove the `^` (start-of-string) anchor** from your regex.
+
+By using the pattern `"required elements exist$"` (with *only* the `$` end-of-string anchor), you tell Jest to find any test whose full name *ends with* "required elements exist". This will correctly match the single test you want to run.
+
+-----
+
+### Corrected Workflow
+
+Here is the full workflow file with the `command` lines fixed in all 6 grading steps. I also removed the final redundant `Summary (optional)` step, as it does the same thing as the `Build & publish combined summary` step right before it.
+
+```yaml
 name: autograde
 
 on:
@@ -42,7 +73,7 @@ jobs:
           };
           EOF
 
-      # Tests (unchanged from the working version you showed)
+      # Tests (unchanged)
       - name: Write tests
         run: |
           mkdir -p __tests__
@@ -224,7 +255,7 @@ jobs:
         with:
           test-name: required elements exist
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "^required elements exist$"
+          command: npx jest --runInBand --testNamePattern "required elements exist$"
           timeout: 60
           max-score: 15
 
@@ -234,7 +265,7 @@ jobs:
         with:
           test-name: no inline onclick; uses addEventListener
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "^button uses addEventListener and no inline onclick$"
+          command: npx jest --runInBand --testNamePattern "button uses addEventListener and no inline onclick$"
           timeout: 60
           max-score: 15
 
@@ -244,7 +275,7 @@ jobs:
         with:
           test-name: large + 2 toppings dine-in = 13.50
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "^price large two toppings dine in$"
+          command: npx jest --runInBand --testNamePattern "price large two toppings dine in$"
           timeout: 60
           max-score: 20
 
@@ -254,7 +285,7 @@ jobs:
         with:
           test-name: small + delivery = 10.50
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "^price small no toppings delivery$"
+          command: npx jest --runInBand --testNamePattern "price small no toppings delivery$"
           timeout: 60
           max-score: 20
 
@@ -264,7 +295,7 @@ jobs:
         with:
           test-name: xl + all toppings = 19.00
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "^price xl eight toppings dine in$"
+          command: npx jest --runInBand --testNamePattern "price xl eight toppings dine in$"
           timeout: 60
           max-score: 15
 
@@ -274,7 +305,7 @@ jobs:
         with:
           test-name: clear resets form
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "^clear button resets form$"
+          command: npx jest --runInBand --testNamePattern "clear button resets form$"
           timeout: 60
           max-score: 15
 
@@ -342,43 +373,6 @@ jobs:
           }
           NODE
 
-      # === Summary (optional echo) ===
-      - name: Summary (optional)
-        shell: bash
-        run: |
-          npx jest --runInBand --json --outputFile=jest-summary.json || true
-          node - <<'NODE'
-          const fs = require('fs');
-          let jr = {};
-          try { jr = JSON.parse(fs.readFileSync('jest-summary.json','utf8')); } catch {}
-          const assertions = (jr.testResults||[]).flatMap(t => t.assertionResults || []);
-          const wanted = [
-            'required elements exist',
-            'button uses addEventListener and no inline onclick',
-            'price large two toppings dine in',
-            'price small no toppings delivery',
-            'price xl eight toppings dine in',
-            'clear button resets form'
-          ];
-          const status = {};
-          for (const name of wanted) {
-            const a = assertions.find(x => x.title === name);
-            status[name] = !!a && a.status === 'passed';
-          }
-          const passed = Object.values(status).filter(Boolean).length;
-          const lines = [];
-          lines.push('Unit 8.7 Autograder Summary');
-          lines.push('Passed: ' + passed + '/' + wanted.length, '');
-          for (const name of wanted) {
-            lines.push((status[name] ? '✅ ' : '❌ ') + name);
-          }
-          lines.push('', 'Checks');
-          for (const t of assertions) {
-            lines.push(`${t.status === 'passed' ? '✅' : '❌'} ${t.title}`);
-          }
-          console.log(lines.join('\n'));
-          NODE
-
       # === Reporter expects T_<runner>_RESULTS env vars matching the IDs ===
       - name: Prepare reporter env
         shell: bash
@@ -396,3 +390,4 @@ jobs:
         with:
           runners: 't_required,t_listener,t_large,t_small,t_xl,t_clear'
           token: ${{ github.token }}
+```
