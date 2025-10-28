@@ -1,5 +1,3 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](REPLACE_WITH_YOUR_CLASSROOM_ASSIGNMENT_LINK)
-
 # Unit 8.7 – Forms & Event Listeners
 
 In this lesson you’ll practice:
@@ -142,7 +140,7 @@ document.getElementById('clearBtn').addEventListener('click', onClearClick);
 3. Large + 2 toppings, dine-in → **$13.50**.  
 4. Small, no toppings, delivery → **$10.50**.  
 5. XL + all 8 toppings, dine-in → **$19.00**.  
-6. Clear resets inputs and output.
+6. Clear resets inputs and output - resets default size to large.
 
 ---
 
@@ -150,5 +148,4 @@ document.getElementById('clearBtn').addEventListener('click', onClearClick);
 - Forgetting `defer` on `<script>` tag.  
 - Using `prompt`/`alert`/`console.log` for output.  
 - Wrong prices or rounding errors.
-
-Good luck!
+- Not setting size to large on Clear button
