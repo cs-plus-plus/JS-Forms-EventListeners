@@ -1,40 +1,29 @@
+name: autograde
 
----
-
-## `.github/workflows/classroom.yml`
-
-```yaml
-name: Classroom Autograder – Unit 8.7 (Forms + EventListeners)
-
-'on':
-  - push
-  - pull_request
-  - workflow_dispatch
-
-permissions:
-  checks: write
-  actions: read
-  contents: read
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   autograde:
     runs-on: ubuntu-latest
-    if: github.actor != 'github-classroom[bot]'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # Install Jest + jsdom
       - name: Install test deps
         run: |
           npm init -y >/dev/null 2>&1 || true
           npm install --save-dev jest@29 jsdom@21 jest-environment-jsdom@29
 
-      - name: Jest setup
+      # Jest setup (TextEncoder/Decoder for Node 20)
+      - name: Write jest setup
         run: |
           cat > jest.setup.cjs <<'EOF'
           const { TextEncoder, TextDecoder } = require('util');
@@ -42,7 +31,8 @@ jobs:
           if (typeof global.TextDecoder === 'undefined') global.TextDecoder = TextDecoder;
           EOF
 
-      - name: Jest config
+      # Jest config
+      - name: Write jest config
         run: |
           cat > jest.config.cjs <<'EOF'
           module.exports = {
@@ -52,7 +42,8 @@ jobs:
           };
           EOF
 
-      - name: Create tests for Unit 8.7
+      # Tests (unchanged from the working version you showed)
+      - name: Write tests
         run: |
           mkdir -p __tests__
           cat > __tests__/forms-8_7.test.cjs <<'EOF'
@@ -226,69 +217,134 @@ jobs:
           });
           EOF
 
-      # ---------- GRADING STEPS (6 checks = 100 points) ----------
-      - name: 'required elements exist'
-        id: t_required
+      # === Individual graded runs (each with an explicit id) ===
+      - id: t_required
+        name: required elements exist
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: 'required elements exist'
+          test-name: required elements exist
           setup-command: echo "ready"
           command: npx jest --runInBand --testNamePattern "^required elements exist$"
           timeout: 60
           max-score: 15
 
-      - name: 'no inline onclick; uses addEventListener'
-        id: t_listener
+      - id: t_listener
+        name: no inline onclick; uses addEventListener
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: 'no inline onclick; uses addEventListener'
+          test-name: no inline onclick; uses addEventListener
           setup-command: echo "ready"
           command: npx jest --runInBand --testNamePattern "^button uses addEventListener and no inline onclick$"
           timeout: 60
           max-score: 15
 
-      - name: 'large + 2 toppings dine-in = 13.50'
-        id: t_large
+      - id: t_large
+        name: large + 2 toppings dine-in = 13.50
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: 'large + 2 toppings dine-in = 13.50'
+          test-name: large + 2 toppings dine-in = 13.50
           setup-command: echo "ready"
           command: npx jest --runInBand --testNamePattern "^price large two toppings dine in$"
           timeout: 60
           max-score: 20
 
-      - name: 'small + delivery = 10.50'
-        id: t_small
+      - id: t_small
+        name: small + delivery = 10.50
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: 'small + delivery = 10.50'
+          test-name: small + delivery = 10.50
           setup-command: echo "ready"
           command: npx jest --runInBand --testNamePattern "^price small no toppings delivery$"
           timeout: 60
           max-score: 20
 
-      - name: 'xl + all toppings = 19.00'
-        id: t_xl
+      - id: t_xl
+        name: xl + all toppings = 19.00
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: 'xl + all toppings = 19.00'
+          test-name: xl + all toppings = 19.00
           setup-command: echo "ready"
           command: npx jest --runInBand --testNamePattern "^price xl eight toppings dine in$"
           timeout: 60
           max-score: 15
 
-      - name: 'clear resets form'
-        id: t_clear
+      - id: t_clear
+        name: clear resets form
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: 'clear resets form'
+          test-name: clear resets form
           setup-command: echo "ready"
           command: npx jest --runInBand --testNamePattern "^clear button resets form$"
           timeout: 60
           max-score: 15
 
-      # ---------- SUMMARY ----------
-      - name: Write summary to job log
+      - name: Build & publish combined summary (console + Summary tab)
+        shell: bash
+        run: |
+          # Run all tests once to produce JSON for aggregation
+          npx jest --runInBand --json --outputFile=jest-summary.json || true
+
+          # Node script: aggregate, format as Markdown, write to console and job summary
+          node - <<'NODE'
+          const fs = require('fs');
+
+          // Read Jest JSON (if present)
+          let jr = {};
+          try { jr = JSON.parse(fs.readFileSync('jest-summary.json','utf8')); } catch {}
+
+          const assertions = (jr.testResults||[]).flatMap(t => t.assertionResults || []);
+
+          // The named checks we care about (must match your test titles exactly)
+          const wanted = [
+            'required elements exist',
+            'button uses addEventListener and no inline onclick',
+            'price large two toppings dine in',
+            'price small no toppings delivery',
+            'price xl eight toppings dine in',
+            'clear button resets form'
+          ];
+
+          // Build status map
+          const status = {};
+          for (const name of wanted) {
+            const a = assertions.find(x => x.title === name);
+            status[name] = !!a && a.status === 'passed';
+          }
+          const passed = Object.values(status).filter(Boolean).length;
+
+          // Pretty counts for full list (“Checks” section)
+          const checks = assertions.map(t => `${t.status === 'passed' ? '✅' : '❌'} ${t.title}`);
+
+          // Markdown for the job summary
+          const md = [
+            `# Unit 8.7 Autograder Summary`,
+            ``,
+            `**Passed: ${passed}/${wanted.length}**`,
+            ``,
+            // Key bullets
+            ...wanted.map(n => `${status[n] ? '✅' : '❌'} ${n}`),
+            ``,
+            `## Checks`,
+            ...checks,
+          ].join('\n');
+
+          // Print to log
+          console.log(md);
+
+          // Publish to the Actions “Summary” tab
+          const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+          if (summaryPath) {
+            // Append (so you can keep earlier content if desired)
+            fs.appendFileSync(summaryPath, md + '\n');
+          } else {
+            console.warn('GITHUB_STEP_SUMMARY not set; unable to write job summary.');
+          }
+          NODE
+
+
+      # === Summary (collects Jest JSON, prints ✅/❌) ===
+      - name: Summary (optional)
+        shell: bash
         run: |
           npx jest --runInBand --json --outputFile=jest-summary.json || true
           node - <<'NODE'
@@ -323,15 +379,9 @@ jobs:
           console.log(lines.join('\n'));
           NODE
 
-      - name: Autograding Reporter
+      # === Report to Classroom (NOTE: runners is a single-quoted one-liner) ===
+      - name: Report grades
         uses: classroom-resources/autograding-grading-reporter@v1
-        env:
-          T_REQUIRED_RESULTS:  ${{ steps.t_required.outputs.result }}
-          T_LISTENER_RESULTS:  ${{ steps.t_listener.outputs.result }}
-          T_LARGE_RESULTS:     ${{ steps.t_large.outputs.result }}
-          T_SMALL_RESULTS:     ${{ steps.t_small.outputs.result }}
-          T_XL_RESULTS:        ${{ steps.t_xl.outputs.result }}
-          T_CLEAR_RESULTS:     ${{ steps.t_clear.outputs.result }}
         with:
-          runners: t_required,t_listener,t_large,t_small,t_xl,t_clear
-
+          runners: 't_required,t_listener,t_large,t_small,t_xl,t_clear'
+          token: ${{ github.token }}
