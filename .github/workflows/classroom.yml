@@ -1,34 +1,3 @@
-You're running into a subtle issue with how Jest's `testNamePattern` works. Your workflow is always awarding 100 points because the patterns you're using (`^test name$`) don't match any tests, causing Jest to exit successfully with "0 tests run" for each step.
-
-Here’s a breakdown of the problem and the corrected workflow.
-
------
-
-### The Problem: Incorrect Test Pattern
-
-The `testNamePattern` flag in Jest matches against the *full* test name, which includes any parent `describe` block names.
-
-  * **Your `describe` block is:** `'Unit 8.7 – Forms & EventListeners'`
-  * **Your `test` name is:** `'required elements exist'`
-  * **Jest's full test name is:** `'Unit 8.7 – Forms & EventListeners required elements exist'`
-
-Your command, `... --testNamePattern "^required elements exist$"` uses regex anchors (`^` for start, `$` for end) that try to match the *entire* string. Since the full name doesn't start with "required elements exist", your pattern fails to match.
-
-When Jest finds 0 tests matching a pattern, it exits with code 0 (success). The `autograding-command-grader` sees this success code and awards the `max-score` for that step. This happens for all 6 steps, resulting in a 100-point grade every time, even if the code is wrong.
-
-### The Solution: Fix the Regex
-
-To fix this, you just need to **remove the `^` (start-of-string) anchor** from your regex.
-
-By using the pattern `"required elements exist$"` (with *only* the `$` end-of-string anchor), you tell Jest to find any test whose full name *ends with* "required elements exist". This will correctly match the single test you want to run.
-
------
-
-### Corrected Workflow
-
-Here is the full workflow file with the `command` lines fixed in all 6 grading steps. I also removed the final redundant `Summary (optional)` step, as it does the same thing as the `Build & publish combined summary` step right before it.
-
-```yaml
 name: autograde
 
 on:
@@ -73,11 +42,11 @@ jobs:
           };
           EOF
 
-      # Tests (unchanged)
+      # Tests
       - name: Write tests
         run: |
           mkdir -p __tests__
-          cat > __tests__/forms-8_7.test.cjs <<'EOF'
+          cat > __tests__/forms-8_7.test.cjs <<'TESTEOF'
           const fs = require('fs');
           const path = require('path');
           const { JSDOM, VirtualConsole } = require('jsdom');
@@ -101,7 +70,7 @@ jobs:
             if (!idx) throw new Error('index.html not found (root/public/src/docs).');
 
             const vconsole = new VirtualConsole();
-            vconsole.on('error', () => {}); // quiet CI
+            vconsole.on('error', () => {});
 
             const baseDir = path.dirname(path.resolve(idx));
             const baseUrl = 'file://' + baseDir.replace(/\\+/g, '/') + '/';
@@ -114,7 +83,6 @@ jobs:
               virtualConsole: vconsole
             });
 
-            // forbid prompt/alert; output must be on page
             dom.window.prompt = () => { throw new Error('Use inputs, not prompt().'); };
             dom.window.alert  = () => { throw new Error('Use textContent, not alert().'); };
 
@@ -133,23 +101,17 @@ jobs:
             });
 
             test('required elements exist', () => {
-              // Buttons & output
               ['btnCalc','clearBtn','myPara','myInput','serviceSelect'].forEach(id =>
                 expect(document.getElementById(id)).not.toBeNull()
               );
-              // 4 radios
               ['r1','r2','r3','r4'].forEach(id =>
                 expect(document.getElementById(id)).not.toBeNull()
               );
-              // 8 checkboxes
               for (let i=1;i<=8;i++) {
                 expect(document.getElementById('cb'+i)).not.toBeNull();
               }
-              // radio group name
               const radios = document.getElementsByName('rg');
               expect(radios.length).toBeGreaterThanOrEqual(4);
-
-              // dropdown values
               const sel = document.getElementById('serviceSelect');
               const vals = Array.from(sel.options).map(o => o.value).sort();
               expect(vals).toEqual(['delivery','dinein','takeout'].sort());
@@ -158,24 +120,25 @@ jobs:
             test('button uses addEventListener and no inline onclick', () => {
               const calc = document.getElementById('btnCalc');
               const clear = document.getElementById('clearBtn');
-              // Fail if inline onclick attributes appear
               expect(calc.getAttribute('onclick')).toBeNull();
               expect(clear.getAttribute('onclick')).toBeNull();
             });
 
             test('price large two toppings dine in', async () => {
-              // Defaults: r3 checked in starter. Ensure two toppings:
+              document.getElementById('r3').checked = true;
+              document.getElementById('r1').checked = false;
+              document.getElementById('r2').checked = false;
+              document.getElementById('r4').checked = false;
               document.getElementById('cb1').checked = true;
               document.getElementById('cb2').checked = true;
-              setVal(document, 'serviceSelect', 'dinein');
-              setVal(document, 'myInput', 'Alex');
-
               document.getElementById('cb3').checked = false;
               document.getElementById('cb4').checked = false;
               document.getElementById('cb5').checked = false;
               document.getElementById('cb6').checked = false;
               document.getElementById('cb7').checked = false;
               document.getElementById('cb8').checked = false;
+              setVal(document, 'serviceSelect', 'dinein');
+              setVal(document, 'myInput', 'Alex');
 
               click(document, 'btnCalc'); await wait();
 
@@ -186,16 +149,11 @@ jobs:
             });
 
             test('price small no toppings delivery', async () => {
-              // Select Small
               document.getElementById('r1').checked = true;
               document.getElementById('r2').checked = false;
               document.getElementById('r3').checked = false;
               document.getElementById('r4').checked = false;
-
-              // No toppings
               for (let i=1;i<=8;i++) document.getElementById('cb'+i).checked = false;
-
-              // Delivery
               setVal(document, 'serviceSelect', 'delivery');
               setVal(document, 'myInput', 'Sam');
 
@@ -208,16 +166,11 @@ jobs:
             });
 
             test('price xl eight toppings dine in', async () => {
-              // XL
               document.getElementById('r4').checked = true;
               document.getElementById('r1').checked = false;
               document.getElementById('r2').checked = false;
               document.getElementById('r3').checked = false;
-
-              // all toppings
               for (let i=1;i<=8;i++) document.getElementById('cb'+i).checked = true;
-
-              // dine in
               setVal(document, 'serviceSelect', 'dinein');
               setVal(document, 'myInput', 'Riley');
 
@@ -230,7 +183,6 @@ jobs:
             });
 
             test('clear button resets form', async () => {
-              // Dirty the form
               setVal(document, 'myInput', 'Taylor');
               document.getElementById('r4').checked = true;
               for (let i=1;i<=8;i++) document.getElementById('cb'+i).checked = i%2===0;
@@ -241,14 +193,14 @@ jobs:
 
               expect(byId(document,'myInput').value).toBe('');
               expect(byId(document,'myPara').textContent).toBe('');
-              expect(byId(document,'r3').checked).toBe(true); // Large is default
+              expect(byId(document,'r3').checked).toBe(true);
               expect(byId(document,'serviceSelect').value).toBe('dinein');
               for (let i=1;i<=8;i++) expect(byId(document,'cb'+i).checked).toBe(false);
             });
           });
-          EOF
+          TESTEOF
 
-      # === Individual graded runs (each with an explicit id) ===
+      # === Individual graded runs ===
       - id: t_required
         name: required elements exist
         uses: classroom-resources/autograding-command-grader@v1
@@ -309,24 +261,16 @@ jobs:
           timeout: 60
           max-score: 15
 
-      # Build & publish combined summary (console + Summary tab)
-      - name: Build & publish combined summary (console + Summary tab)
+      # Build & publish combined summary
+      - name: Build & publish combined summary
         shell: bash
         run: |
-          # Run all tests once to produce JSON for aggregation
           npx jest --runInBand --json --outputFile=jest-summary.json || true
-
-          # Node script: aggregate, format as Markdown, write to console and job summary
           node - <<'NODE'
           const fs = require('fs');
-
-          // Read Jest JSON (if present)
           let jr = {};
           try { jr = JSON.parse(fs.readFileSync('jest-summary.json','utf8')); } catch {}
-
           const assertions = (jr.testResults||[]).flatMap(t => t.assertionResults || []);
-
-          // The named checks we care about (must match your test titles exactly)
           const wanted = [
             'required elements exist',
             'button uses addEventListener and no inline onclick',
@@ -335,45 +279,31 @@ jobs:
             'price xl eight toppings dine in',
             'clear button resets form'
           ];
-
-          // Build status map
           const status = {};
           for (const name of wanted) {
             const a = assertions.find(x => x.title === name);
             status[name] = !!a && a.status === 'passed';
           }
           const passed = Object.values(status).filter(Boolean).length;
-
-          // Pretty counts for full list (“Checks” section)
           const checks = assertions.map(t => `${t.status === 'passed' ? '✅' : '❌'} ${t.title}`);
-
-          // Markdown for the job summary
           const md = [
             `# Unit 8.7 Autograder Summary`,
             ``,
             `**Passed: ${passed}/${wanted.length}**`,
             ``,
-            // Key bullets
             ...wanted.map(n => `${status[n] ? '✅' : '❌'} ${n}`),
             ``,
             `## Checks`,
             ...checks,
           ].join('\n');
-
-          // Print to log
           console.log(md);
-
-          // Publish to the Actions “Summary” tab
           const summaryPath = process.env.GITHUB_STEP_SUMMARY;
           if (summaryPath) {
-            // Append (so you can keep earlier content if desired)
             fs.appendFileSync(summaryPath, md + '\n');
-          } else {
-            console.warn('GITHUB_STEP_SUMMARY not set; unable to write job summary.');
           }
           NODE
 
-      # === Reporter expects T_<runner>_RESULTS env vars matching the IDs ===
+      # Reporter env
       - name: Prepare reporter env
         shell: bash
         run: |
@@ -384,10 +314,9 @@ jobs:
           echo "T_XL_RESULTS=${{ steps.t_xl.outputs.result }}"              >> "$GITHUB_ENV"
           echo "T_CLEAR_RESULTS=${{ steps.t_clear.outputs.result }}"        >> "$GITHUB_ENV"
 
-      # === Report to Classroom (runners must match the IDs above) ===
+      # Report to Classroom
       - name: Report grades
         uses: classroom-resources/autograding-grading-reporter@v1
         with:
           runners: 't_required,t_listener,t_large,t_small,t_xl,t_clear'
           token: ${{ github.token }}
-```

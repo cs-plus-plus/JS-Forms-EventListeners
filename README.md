@@ -139,7 +139,7 @@ Each checked topping adds **$0.50**. There are 8 toppings total (IDs: `cb1` thro
 | Value | Extra Cost |
 |-------|-----------|
 | `dinein` | $0.00 |
-| `takeout` | $0.00 |
+| `takeout` | $1.50 |
 | `delivery` | $3.00 |
 
 **Total formula:**
