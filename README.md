@@ -128,7 +128,7 @@ When the user types text and clicks "Shout":
 - Display in the output div
 - Example: "hello" → "HELLO!"
 
-### Pizza Builder — 65 points
+### Pizza Builder — 60 points
 
 Build a pizza order calculator:
 - **Size**: Read the selected radio button value (Small $7.50, Medium $10.00, Large $12.50, XL $15.00)
@@ -145,11 +145,11 @@ The Clear button resets everything:
 - Set service to "dinein"
 - Clear the output
 
-### Code Quality — 20 points
+### Code Quality — 25 points
 
 - **No `onclick` in HTML** — buttons must not have onclick attributes (10 points)
 - **Uses `addEventListener`** — source code contains addEventListener (5 points)
-- **Required elements exist** — all IDs and form elements present (5 points)
+- **Required elements exist** — all IDs and form elements present (10 points)
 
 ---
 
