@@ -8,6 +8,7 @@ on:
 jobs:
   autograde:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -16,13 +17,11 @@ jobs:
         with:
           node-version: 20
 
-      # Install Jest + jsdom
       - name: Install test deps
         run: |
           npm init -y >/dev/null 2>&1 || true
           npm install --save-dev jest@29 jsdom@21 jest-environment-jsdom@29
 
-      # Jest setup (TextEncoder/Decoder for Node 20)
       - name: Write jest setup
         run: |
           cat > jest.setup.cjs <<'EOF'
@@ -31,177 +30,191 @@ jobs:
           if (typeof global.TextDecoder === 'undefined') global.TextDecoder = TextDecoder;
           EOF
 
-      # Jest config
       - name: Write jest config
         run: |
           cat > jest.config.cjs <<'EOF'
           module.exports = {
             testEnvironment: 'jsdom',
             setupFiles: ['<rootDir>/jest.setup.cjs'],
-            testMatch: ['**/__tests__/**/*.test.cjs']
+            testMatch: ['**/__tests__/**/*.test.cjs'],
+            testTimeout: 15000
           };
           EOF
 
-      # Tests
       - name: Write tests
         run: |
           mkdir -p __tests__
-          cat > __tests__/forms-8_7.test.cjs <<'TESTEOF'
+          cat > __tests__/forms.test.cjs <<'TESTEOF'
           const fs = require('fs');
           const path = require('path');
           const { JSDOM, VirtualConsole } = require('jsdom');
 
-          const wait = (ms=30) => new Promise(r => setTimeout(r, ms));
-          const find = arr => arr.find(p => fs.existsSync(p)) || null;
-          const findIndex = () => find(['index.html','public/index.html','src/index.html','docs/index.html']);
+          const wait = function(ms) { return new Promise(function(r) { setTimeout(r, ms || 50); }); };
+          var source = '';
+          try { source = fs.readFileSync(path.resolve('script.js'), 'utf8'); } catch(e) {}
 
           function byId(doc, id) { return doc.getElementById(id); }
           function text(doc, id) {
-            const el = byId(doc, id);
-            return (el?.textContent || el?.innerText || '').trim();
+            var el = byId(doc, id);
+            return (el && (el.textContent || el.innerText) || '').trim();
           }
           function setVal(doc, id, v) {
-            const el = byId(doc, id); if (!el) return false; el.value = String(v); return true;
+            var el = byId(doc, id);
+            if (!el) return;
+            el.value = String(v);
           }
-          function click(doc, id) { byId(doc, id).click(); }
+          function click(doc, id) {
+            var el = byId(doc, id);
+            if (el) el.click();
+          }
 
           async function loadDOM() {
-            const idx = findIndex();
-            if (!idx) throw new Error('index.html not found (root/public/src/docs).');
-
-            const vconsole = new VirtualConsole();
-            vconsole.on('error', () => {});
-
-            const baseDir = path.dirname(path.resolve(idx));
-            const baseUrl = 'file://' + baseDir.replace(/\\+/g, '/') + '/';
-
-            const dom = await JSDOM.fromFile(idx, {
+            var idx = 'index.html';
+            if (!fs.existsSync(idx)) throw new Error('index.html not found');
+            var vconsole = new VirtualConsole();
+            vconsole.on('error', function() {});
+            var baseDir = path.dirname(path.resolve(idx));
+            var baseUrl = 'file://' + baseDir.replace(/\\+/g, '/') + '/';
+            var dom = await JSDOM.fromFile(idx, {
               url: baseUrl,
               runScripts: 'dangerously',
               resources: 'usable',
               pretendToBeVisual: true,
               virtualConsole: vconsole
             });
-
-            dom.window.prompt = () => { throw new Error('Use inputs, not prompt().'); };
-            dom.window.alert  = () => { throw new Error('Use textContent, not alert().'); };
-
-            await new Promise(res => dom.window.addEventListener('load', res, { once: true }));
+            dom.window.alert = function() {};
+            dom.window.prompt = function() { return ''; };
+            await new Promise(function(res) {
+              dom.window.addEventListener('load', res, { once: true });
+            });
             await wait();
             return dom;
           }
 
-          describe('Unit 8.7 – Forms & EventListeners', () => {
-            let dom, window, document;
-
-            beforeAll(async () => {
+          describe('Unit 8.7 – Forms & Event Listeners', function() {
+            var dom, window, document;
+            beforeAll(async function() {
               dom = await loadDOM();
               window = dom.window;
               document = window.document;
             });
+            afterAll(function() { if (dom) dom.window.close(); });
 
-            test('required elements exist', () => {
-              ['btnCalc','clearBtn','myPara','myInput','serviceSelect'].forEach(id =>
-                expect(document.getElementById(id)).not.toBeNull()
-              );
-              ['r1','r2','r3','r4'].forEach(id =>
-                expect(document.getElementById(id)).not.toBeNull()
-              );
-              for (let i=1;i<=8;i++) {
-                expect(document.getElementById('cb'+i)).not.toBeNull();
+            test('shout warm up', async function() {
+              setVal(document, 'shoutInput', 'hello');
+              click(document, 'btnShout');
+              await wait();
+              expect(text(document, 'outShout')).toBe('HELLO!');
+            });
+
+            test('no onclick in HTML', function() {
+              var btns = ['btnCalc', 'clearBtn', 'btnShout'];
+              for (var i = 0; i < btns.length; i++) {
+                var btn = byId(document, btns[i]);
+                expect(btn).not.toBeNull();
+                expect(btn.getAttribute('onclick')).toBeNull();
               }
-              const radios = document.getElementsByName('rg');
+            });
+
+            test('uses addEventListener', function() {
+              expect(source).toMatch(/addEventListener\s*\(/);
+            });
+
+            test('required elements exist', function() {
+              var ids = ['myInput', 'serviceSelect', 'btnCalc', 'clearBtn', 'myPara',
+                'btnShout', 'shoutInput', 'outShout'];
+              for (var i = 0; i < ids.length; i++) {
+                expect(byId(document, ids[i])).not.toBeNull();
+              }
+              var radios = document.getElementsByName('rg');
               expect(radios.length).toBeGreaterThanOrEqual(4);
-              const sel = document.getElementById('serviceSelect');
-              const vals = Array.from(sel.options).map(o => o.value).sort();
-              expect(vals).toEqual(['delivery','dinein','takeout'].sort());
+              var checkboxes = document.getElementsByName('cb');
+              expect(checkboxes.length).toBeGreaterThanOrEqual(8);
             });
 
-            test('button uses addEventListener and no inline onclick', () => {
-              const calc = document.getElementById('btnCalc');
-              const clear = document.getElementById('clearBtn');
-              expect(calc.getAttribute('onclick')).toBeNull();
-              expect(clear.getAttribute('onclick')).toBeNull();
+            test('large plus 2 toppings dine in', async function() {
+              // Large is default (r3 checked), select 2 toppings
+              byId(document, 'cb1').checked = true;
+              byId(document, 'cb2').checked = true;
+              byId(document, 'serviceSelect').value = 'dinein';
+              setVal(document, 'myInput', 'Test');
+              click(document, 'btnCalc');
+              await wait();
+              var output = text(document, 'myPara');
+              expect(output).toMatch(/13\.50/);
             });
 
-            test('price large two toppings dine in', async () => {
-              document.getElementById('r3').checked = true;
-              document.getElementById('r1').checked = false;
-              document.getElementById('r2').checked = false;
-              document.getElementById('r4').checked = false;
-              document.getElementById('cb1').checked = true;
-              document.getElementById('cb2').checked = true;
-              document.getElementById('cb3').checked = false;
-              document.getElementById('cb4').checked = false;
-              document.getElementById('cb5').checked = false;
-              document.getElementById('cb6').checked = false;
-              document.getElementById('cb7').checked = false;
-              document.getElementById('cb8').checked = false;
-              setVal(document, 'serviceSelect', 'dinein');
-              setVal(document, 'myInput', 'Alex');
-
-              click(document, 'btnCalc'); await wait();
-
-              const t = text(document, 'myPara');
-              // Large 12.5 + 2*0.5 = 13.5
-              const num = parseFloat((t.match(/-?\d+(\.\d+)?/)||[])[0]);
-              expect(Math.abs(num - 13.5) < 1e-6).toBe(true);
+            test('small no toppings delivery', async function() {
+              // Uncheck all toppings first
+              var cbs = document.getElementsByName('cb');
+              for (var i = 0; i < cbs.length; i++) { cbs[i].checked = false; }
+              // Select small
+              byId(document, 'r1').checked = true;
+              byId(document, 'serviceSelect').value = 'delivery';
+              setVal(document, 'myInput', 'Test');
+              click(document, 'btnCalc');
+              await wait();
+              var output = text(document, 'myPara');
+              expect(output).toMatch(/10\.50/);
             });
 
-            test('price small no toppings delivery', async () => {
-              document.getElementById('r1').checked = true;
-              document.getElementById('r2').checked = false;
-              document.getElementById('r3').checked = false;
-              document.getElementById('r4').checked = false;
-              for (let i=1;i<=8;i++) document.getElementById('cb'+i).checked = false;
-              setVal(document, 'serviceSelect', 'delivery');
-              setVal(document, 'myInput', 'Sam');
+            test('clear resets form', async function() {
+              // Set some values first
+              setVal(document, 'myInput', 'Alice');
+              byId(document, 'r1').checked = true;
+              byId(document, 'cb1').checked = true;
+              byId(document, 'cb2').checked = true;
+              byId(document, 'serviceSelect').value = 'delivery';
+              byId(document, 'myPara').textContent = 'something';
 
-              click(document, 'btnCalc'); await wait();
+              click(document, 'clearBtn');
+              await wait();
 
-              const t = text(document, 'myPara');
-              // 7.5 + 0 + 3 = 10.5
-              const num = parseFloat((t.match(/-?\d+(\.\d+)?/)||[])[0]);
-              expect(Math.abs(num - 10.5) < 1e-6).toBe(true);
-            });
-
-            test('price xl eight toppings dine in', async () => {
-              document.getElementById('r4').checked = true;
-              document.getElementById('r1').checked = false;
-              document.getElementById('r2').checked = false;
-              document.getElementById('r3').checked = false;
-              for (let i=1;i<=8;i++) document.getElementById('cb'+i).checked = true;
-              setVal(document, 'serviceSelect', 'dinein');
-              setVal(document, 'myInput', 'Riley');
-
-              click(document, 'btnCalc'); await wait();
-
-              const t = text(document, 'myPara');
-              // 15 + 8*0.5 = 19.0
-              const num = parseFloat((t.match(/-?\d+(\.\d+)?/)||[])[0]);
-              expect(Math.abs(num - 19.0) < 1e-6).toBe(true);
-            });
-
-            test('clear button resets form', async () => {
-              setVal(document, 'myInput', 'Taylor');
-              document.getElementById('r4').checked = true;
-              for (let i=1;i<=8;i++) document.getElementById('cb'+i).checked = i%2===0;
-              setVal(document, 'serviceSelect', 'delivery');
-              byId(document, 'myPara').textContent = 'temp';
-
-              click(document, 'clearBtn'); await wait();
-
-              expect(byId(document,'myInput').value).toBe('');
-              expect(byId(document,'myPara').textContent).toBe('');
-              expect(byId(document,'r3').checked).toBe(true);
-              expect(byId(document,'serviceSelect').value).toBe('dinein');
-              for (let i=1;i<=8;i++) expect(byId(document,'cb'+i).checked).toBe(false);
+              // Check all reset
+              expect(byId(document, 'myInput').value).toBe('');
+              expect(byId(document, 'r3').checked).toBe(true);
+              var cbs = document.getElementsByName('cb');
+              for (var i = 0; i < cbs.length; i++) {
+                expect(cbs[i].checked).toBe(false);
+              }
+              expect(byId(document, 'serviceSelect').value).toBe('dinein');
+              expect(text(document, 'myPara')).toBe('');
             });
           });
           TESTEOF
 
-      # === Individual graded runs ===
-      - id: t_required
+      # === Graded steps (sum to 100) ===
+      - id: t_shout
+        name: shout warm up
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: shout warm up
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "shout warm up$"
+          timeout: 60
+          max-score: 15
+
+      - id: t_no_onclick
+        name: no onclick in HTML
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: no onclick in HTML
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "no onclick in HTML$"
+          timeout: 60
+          max-score: 10
+
+      - id: t_addeventlistener
+        name: uses addEventListener
+        uses: classroom-resources/autograding-command-grader@v1
+        with:
+          test-name: uses addEventListener
+          setup-command: echo "ready"
+          command: npx jest --runInBand --testNamePattern "uses addEventListener$"
+          timeout: 60
+          max-score: 5
+
+      - id: t_elements
         name: required elements exist
         uses: classroom-resources/autograding-command-grader@v1
         with:
@@ -209,47 +222,27 @@ jobs:
           setup-command: echo "ready"
           command: npx jest --runInBand --testNamePattern "required elements exist$"
           timeout: 60
-          max-score: 15
+          max-score: 10
 
-      - id: t_listener
-        name: no inline onclick; uses addEventListener
+      - id: t_large_2
+        name: large plus 2 toppings dine in
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: no inline onclick; uses addEventListener
+          test-name: large plus 2 toppings dine in
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "button uses addEventListener and no inline onclick$"
-          timeout: 60
-          max-score: 15
-
-      - id: t_large
-        name: large + 2 toppings dine-in = 13.50
-        uses: classroom-resources/autograding-command-grader@v1
-        with:
-          test-name: large + 2 toppings dine-in = 13.50
-          setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "price large two toppings dine in$"
+          command: npx jest --runInBand --testNamePattern "large plus 2 toppings dine in$"
           timeout: 60
           max-score: 20
 
-      - id: t_small
-        name: small + delivery = 10.50
+      - id: t_small_delivery
+        name: small no toppings delivery
         uses: classroom-resources/autograding-command-grader@v1
         with:
-          test-name: small + delivery = 10.50
+          test-name: small no toppings delivery
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "price small no toppings delivery$"
+          command: npx jest --runInBand --testNamePattern "small no toppings delivery$"
           timeout: 60
           max-score: 20
-
-      - id: t_xl
-        name: xl + all toppings = 19.00
-        uses: classroom-resources/autograding-command-grader@v1
-        with:
-          test-name: xl + all toppings = 19.00
-          setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "price xl eight toppings dine in$"
-          timeout: 60
-          max-score: 15
 
       - id: t_clear
         name: clear resets form
@@ -257,66 +250,55 @@ jobs:
         with:
           test-name: clear resets form
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "clear button resets form$"
+          command: npx jest --runInBand --testNamePattern "clear resets form$"
           timeout: 60
-          max-score: 15
+          max-score: 20
 
-      # Build & publish combined summary
-      - name: Build & publish combined summary
+      # Summary
+      - name: Build summary
         shell: bash
         run: |
           npx jest --runInBand --json --outputFile=jest-summary.json || true
           node - <<'NODE'
-          const fs = require('fs');
+          const fs = require("fs");
           let jr = {};
-          try { jr = JSON.parse(fs.readFileSync('jest-summary.json','utf8')); } catch {}
+          try { jr = JSON.parse(fs.readFileSync("jest-summary.json","utf8")); } catch {}
           const assertions = (jr.testResults||[]).flatMap(t => t.assertionResults || []);
-          const wanted = [
-            'required elements exist',
-            'button uses addEventListener and no inline onclick',
-            'price large two toppings dine in',
-            'price small no toppings delivery',
-            'price xl eight toppings dine in',
-            'clear button resets form'
+          const tests = [
+            { name: "shout warm up", pts: 15 },
+            { name: "no onclick in HTML", pts: 10 },
+            { name: "uses addEventListener", pts: 5 },
+            { name: "required elements exist", pts: 10 },
+            { name: "large plus 2 toppings dine in", pts: 20 },
+            { name: "small no toppings delivery", pts: 20 },
+            { name: "clear resets form", pts: 20 },
           ];
-          const status = {};
-          for (const name of wanted) {
-            const a = assertions.find(x => x.title === name);
-            status[name] = !!a && a.status === 'passed';
+          let earned = 0;
+          const lines = ["# Unit 8.7 Autograder Summary", ""];
+          for (const t of tests) {
+            const a = assertions.find(x => x.title === t.name);
+            const passed = !!a && a.status === "passed";
+            if (passed) earned += t.pts;
+            lines.push((passed ? "✅" : "❌") + " " + t.name + " (" + t.pts + " pts)");
           }
-          const passed = Object.values(status).filter(Boolean).length;
-          const checks = assertions.map(t => `${t.status === 'passed' ? '✅' : '❌'} ${t.title}`);
-          const md = [
-            `# Unit 8.7 Autograder Summary`,
-            ``,
-            `**Passed: ${passed}/${wanted.length}**`,
-            ``,
-            ...wanted.map(n => `${status[n] ? '✅' : '❌'} ${n}`),
-            ``,
-            `## Checks`,
-            ...checks,
-          ].join('\n');
-          console.log(md);
-          const summaryPath = process.env.GITHUB_STEP_SUMMARY;
-          if (summaryPath) {
-            fs.appendFileSync(summaryPath, md + '\n');
-          }
+          lines.push("", "**Score: " + earned + "/100**");
+          console.log(lines.join("\n"));
+          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
           NODE
 
-      # Reporter env
       - name: Prepare reporter env
         shell: bash
         run: |
-          echo "T_REQUIRED_RESULTS=${{ steps.t_required.outputs.result }}"  >> "$GITHUB_ENV"
-          echo "T_LISTENER_RESULTS=${{ steps.t_listener.outputs.result }}"  >> "$GITHUB_ENV"
-          echo "T_LARGE_RESULTS=${{ steps.t_large.outputs.result }}"        >> "$GITHUB_ENV"
-          echo "T_SMALL_RESULTS=${{ steps.t_small.outputs.result }}"        >> "$GITHUB_ENV"
-          echo "T_XL_RESULTS=${{ steps.t_xl.outputs.result }}"              >> "$GITHUB_ENV"
-          echo "T_CLEAR_RESULTS=${{ steps.t_clear.outputs.result }}"        >> "$GITHUB_ENV"
+          echo "T_SHOUT_RESULTS=${{ steps.t_shout.outputs.result }}"                     >> "$GITHUB_ENV"
+          echo "T_NO_ONCLICK_RESULTS=${{ steps.t_no_onclick.outputs.result }}"           >> "$GITHUB_ENV"
+          echo "T_ADDEVENTLISTENER_RESULTS=${{ steps.t_addeventlistener.outputs.result }}" >> "$GITHUB_ENV"
+          echo "T_ELEMENTS_RESULTS=${{ steps.t_elements.outputs.result }}"               >> "$GITHUB_ENV"
+          echo "T_LARGE_2_RESULTS=${{ steps.t_large_2.outputs.result }}"                 >> "$GITHUB_ENV"
+          echo "T_SMALL_DELIVERY_RESULTS=${{ steps.t_small_delivery.outputs.result }}"   >> "$GITHUB_ENV"
+          echo "T_CLEAR_RESULTS=${{ steps.t_clear.outputs.result }}"                     >> "$GITHUB_ENV"
 
-      # Report to Classroom
       - name: Report grades
         uses: classroom-resources/autograding-grading-reporter@v1
         with:
-          runners: 't_required,t_listener,t_large,t_small,t_xl,t_clear'
+          runners: 't_shout,t_no_onclick,t_addeventlistener,t_elements,t_large_2,t_small_delivery,t_clear'
           token: ${{ github.token }}

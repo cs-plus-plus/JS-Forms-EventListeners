@@ -1,302 +1,199 @@
-# CS++ JavaScript — Lesson 8.7: Forms and Event Listeners
+# CS++ JavaScript — Forms & Event Listeners
 
-> **Lesson 8.7** | 100 Points | 6 Autograded Tests
+> **Unit 8.7** | 100 Points | 7 Automated Tests
 
-In this assignment you will build a Pizza Builder form with radio buttons, checkboxes, and a dropdown. You will wire everything using `addEventListener` — no inline `onclick` attributes allowed.
+In this assignment you will learn how to read values from HTML forms and wire buttons using `addEventListener()` — the modern way to handle user interactions.
 
 ---
 
 ## Table of Contents
 
-1. [Concepts You Need](#concepts-you-need)
-2. [Project Overview](#project-overview)
-3. [Pricing Rules](#pricing-rules)
-4. [Required IDs](#required-ids)
-5. [File Structure](#file-structure)
-6. [Autograding](#autograding)
-7. [Try It Yourself — Practice Examples](#try-it-yourself--practice-examples)
+1. [What Is addEventListener?](#what-is-addeventlistener)
+2. [Reading Form Values](#reading-form-values)
+3. [Radio Buttons](#radio-buttons)
+4. [Checkboxes](#checkboxes)
+5. [Dropdown (select)](#dropdown-select)
+6. [Assignment](#assignment)
+7. [Scoring Rubric](#scoring-rubric)
 8. [Tips for Success](#tips-for-success)
 9. [FAQ](#faq)
 
 ---
 
-## Concepts You Need
+## What Is addEventListener?
 
-### addEventListener
-
-`addEventListener` attaches a function to an element that runs when an event occurs. This is the modern way to handle events — do NOT use inline `onclick` attributes in your HTML.
+In the previous assignment (Functions), buttons used `onclick` in the HTML. That works, but the modern and preferred approach is `addEventListener()`:
 
 ```javascript
-// In script.js (not in HTML)
-document.getElementById("myBtn").addEventListener("click", function() {
-    console.log("Button clicked!");
+let btn = document.getElementById("myButton");
+btn.addEventListener("click", function() {
+  // this code runs when the button is clicked
 });
 ```
 
-Why not `onclick`? Using `addEventListener`:
-- Keeps JavaScript separate from HTML (separation of concerns)
-- Allows multiple listeners on the same element
-- Is the industry standard
+**Important:** Do NOT add `onclick` attributes in your HTML. The autograder checks that buttons use `addEventListener` only.
 
-### Radio Buttons
+---
 
-Radio buttons let the user select **exactly one** option from a group. All radios in a group share the same `name` attribute.
+## Reading Form Values
 
-```html
-<input type="radio" name="size" id="small" value="7.5">
-<label for="small">Small ($7.50)</label>
-
-<input type="radio" name="size" id="large" value="12.5" checked>
-<label for="large">Large ($12.50)</label>
-```
-
-Reading the selected value in JavaScript:
+To read the value from a text input:
 
 ```javascript
-// Find the checked radio in the group
-let selected = document.querySelector('input[name="size"]:checked');
-let price = parseFloat(selected.value);  // e.g., 12.5
+let name = document.getElementById("myInput").value;
 ```
 
-### Checkboxes
-
-Checkboxes let the user select **zero or more** options:
-
-```html
-<input type="checkbox" name="topping" id="cheese" value="Cheese">
-<label for="cheese">Cheese</label>
-```
-
-Counting checked checkboxes:
+To display text on the page:
 
 ```javascript
-let checkboxes = document.getElementsByName("topping");
-let count = 0;
-for (let cb of checkboxes) {
-    if (cb.checked) {
-        count++;
-    }
+document.getElementById("output").textContent = "Hello!";
+```
+
+---
+
+## Radio Buttons
+
+Radio buttons let the user pick ONE option from a group. They share the same `name` attribute:
+
+```html
+<input type="radio" name="size" value="small"> Small
+<input type="radio" name="size" value="large" checked> Large
+```
+
+To find which one is selected, loop through them:
+
+```javascript
+let radios = document.getElementsByName("size");
+let selected = "";
+for (let i = 0; i < radios.length; i++) {
+  if (radios[i].checked) {
+    selected = radios[i].value;
+  }
 }
 ```
 
-### Select (Dropdown)
+---
 
-A dropdown lets the user pick one option from a list:
+## Checkboxes
+
+Checkboxes let the user select MULTIPLE options:
 
 ```html
-<select id="serviceSelect">
-    <option value="dinein">Dine-In</option>
-    <option value="delivery">Delivery (+$3)</option>
+<input type="checkbox" name="topping" id="t1"> Cheese
+<input type="checkbox" name="topping" id="t2"> Pepperoni
+```
+
+To count how many are checked:
+
+```javascript
+let boxes = document.getElementsByName("topping");
+let count = 0;
+for (let i = 0; i < boxes.length; i++) {
+  if (boxes[i].checked) {
+    count = count + 1;
+  }
+}
+```
+
+---
+
+## Dropdown (select)
+
+A `<select>` element creates a dropdown menu:
+
+```html
+<select id="color">
+  <option value="red">Red</option>
+  <option value="blue" selected>Blue</option>
 </select>
 ```
 
-Reading the selected value:
+To read the selected value:
 
 ```javascript
-let service = document.getElementById("serviceSelect").value;  // "dinein" or "delivery"
+let color = document.getElementById("color").value;  // "blue"
 ```
-
-### The `defer` Attribute
-
-When your `<script>` tag is in the `<head>`, the JavaScript runs before the HTML elements exist. Adding `defer` tells the browser to wait until the HTML is fully loaded:
-
-```html
-<script src="script.js" defer></script>
-```
-
-Without `defer`, `document.getElementById("btnCalc")` would return `null` because the button does not exist yet.
 
 ---
 
-## Project Overview
+## Assignment
 
-Build a Pizza Builder page where the user:
-1. Enters their name
-2. Selects a pizza size (radio buttons)
-3. Selects toppings (checkboxes, $0.50 each)
-4. Selects a service type (dropdown)
-5. Clicks "Calculate" to see the total
-6. Clicks "Start Over" to reset the form
+Complete `script.js` by following the STEP comments. Use `addEventListener()` for all buttons — do NOT use `onclick` in the HTML.
 
----
+### Warm-Up: Shout It! — 15 points
 
-## Pricing Rules
+When the user types text and clicks "Shout":
+- Read the text from the input
+- Convert to uppercase and add "!" at the end
+- Display in the output div
+- Example: "hello" → "HELLO!"
 
-**Sizes (radio buttons, name="rg"):**
+### Pizza Builder — 65 points
 
-| ID | Size | Price |
-|----|------|-------|
-| `r1` | Small | $7.50 |
-| `r2` | Medium | $10.00 |
-| `r3` | Large | $12.50 |
-| `r4` | XL | $15.00 |
+Build a pizza order calculator:
+- **Size**: Read the selected radio button value (Small $7.50, Medium $10.00, Large $12.50, XL $15.00)
+- **Toppings**: Count checked checkboxes, multiply by $0.50
+- **Service**: Read dropdown value (Dine In $0, Take Out $1.50, Delivery $3.00)
+- **Total**: size + toppings + service fee
+- Display: `[name], your total is $[total]` (with .toFixed(2))
+- If name is empty, use "Customer"
 
-**Toppings (checkboxes, name="cb"):**
-Each checked topping adds **$0.50**. There are 8 toppings total (IDs: `cb1` through `cb8`).
+The Clear button resets everything:
+- Empty the name input
+- Select Large radio
+- Uncheck all toppings
+- Set service to "dinein"
+- Clear the output
 
-**Service (select, id="serviceSelect"):**
+### Code Quality — 20 points
 
-| Value | Extra Cost |
-|-------|-----------|
-| `dinein` | $0.00 |
-| `takeout` | $1.50 |
-| `delivery` | $3.00 |
-
-**Total formula:**
-```
-total = sizePrice + (numberOfToppings * 0.50) + deliveryFee
-```
-
-Display the total in `#myPara` with `textContent`, formatted to two decimal places (e.g., `$13.50`).
+- **No `onclick` in HTML** — buttons must not have onclick attributes (10 points)
+- **Uses `addEventListener`** — source code contains addEventListener (5 points)
+- **Required elements exist** — all IDs and form elements present (5 points)
 
 ---
 
-## Required IDs
+## Scoring Rubric
 
-These exact IDs must exist in your HTML:
-
-**Inputs:**
-- Name input: `myInput`
-- Size radios (name="rg"): `r1`, `r2`, `r3`, `r4`
-- Topping checkboxes (name="cb"): `cb1`, `cb2`, `cb3`, `cb4`, `cb5`, `cb6`, `cb7`, `cb8`
-- Service dropdown: `serviceSelect`
-
-**Buttons:**
-- Calculate: `btnCalc`
-- Clear/Reset: `clearBtn`
-
-**Output:**
-- Results paragraph: `myPara`
-
----
-
-## File Structure
-
-```
-JS-Forms-EventListeners/
-├── index.html              <-- Pizza Builder form (provided)
-├── script.js               <-- YOUR CODE GOES HERE
-├── styles.css              <-- Optional styling
-└── .github/
-    └── workflows/
-        └── classroom.yml   <-- Autograding tests (DO NOT MODIFY)
-```
-
-**Edit `script.js`** to add your event listeners and calculation logic. The starter `index.html` is provided with all the required elements.
-
----
-
-## Autograding
-
-| Test | What It Checks | Points |
-|------|---------------|--------|
-| Required elements exist | All buttons, radios, checkboxes, select, and output present | 15 |
-| Uses addEventListener (no onclick) | No inline `onclick` attributes on buttons | 15 |
-| Large + 2 toppings, dine-in | Total is $13.50 | 20 |
-| Small + no toppings, delivery | Total is $10.50 | 20 |
-| XL + all 8 toppings, dine-in | Total is $19.00 | 15 |
-| Clear button resets form | All inputs cleared, size defaults to Large | 15 |
-
-**Total: 100 points**
-
----
-
-## Try It Yourself — Practice Examples
-
-Create `practice.html` and `practice.js` to experiment without affecting your grade.
-
-**practice.html:**
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Practice - Event Listeners</title>
-    <script src="practice.js" defer></script>
-</head>
-<body>
-    <h1>Event Listener Practice</h1>
-
-    <h3>Radio Buttons</h3>
-    <input type="radio" name="color" id="red" value="red" checked>
-    <label for="red">Red</label>
-    <input type="radio" name="color" id="blue" value="blue">
-    <label for="blue">Blue</label>
-
-    <h3>Checkboxes</h3>
-    <input type="checkbox" id="bold"> <label for="bold">Bold</label>
-    <input type="checkbox" id="italic"> <label for="italic">Italic</label>
-
-    <h3>Dropdown</h3>
-    <select id="fontSize">
-        <option value="12">Small</option>
-        <option value="16">Medium</option>
-        <option value="24">Large</option>
-    </select>
-
-    <br><br>
-    <button id="showBtn">Show Selections</button>
-    <p id="output"></p>
-</body>
-</html>
-```
-
-**practice.js:**
-```javascript
-// practice.js — event listener practice
-document.getElementById("showBtn").addEventListener("click", function() {
-    // Read radio
-    let color = document.querySelector('input[name="color"]:checked').value;
-
-    // Read checkboxes
-    let bold = document.getElementById("bold").checked;
-    let italic = document.getElementById("italic").checked;
-    let styles = [];
-    if (bold) styles.push("Bold");
-    if (italic) styles.push("Italic");
-
-    // Read dropdown
-    let size = document.getElementById("fontSize").value;
-
-    // Display
-    let result = "Color: " + color;
-    result += " | Styles: " + (styles.length > 0 ? styles.join(", ") : "None");
-    result += " | Font size: " + size + "px";
-    document.getElementById("output").textContent = result;
-});
-```
+| # | Test | Points | What the autograder checks |
+|---|------|--------|---------------------------|
+| 1 | Shout warm-up | 15 | "hello" → "HELLO!" in output |
+| 2 | No onclick in HTML | 10 | btnCalc, clearBtn, btnShout have no onclick attribute |
+| 3 | Uses addEventListener | 5 | Source code contains `addEventListener` |
+| 4 | Required elements exist | 10 | All expected IDs and form elements |
+| 5 | Large + 2 toppings dine-in = $13.50 | 20 | Price calculation |
+| 6 | Small + no toppings + delivery = $10.50 | 20 | Price calculation |
+| 7 | Clear resets form | 20 | All inputs reset to defaults |
+| | **Total** | **100** | |
 
 ---
 
 ## Tips for Success
 
-1. Add `defer` to your script tag: `<script src="script.js" defer></script>` — without this, your addEventListener calls will fail because the elements do not exist yet
-2. Do NOT use `onclick` in your HTML — the test specifically checks that no buttons have inline onclick attributes
-3. Use `parseFloat()` when reading radio values — they come as strings
-4. Use `document.getElementsByName("cb")` and loop through to count checked toppings
-5. Format the total with `.toFixed(2)` for consistent decimal display
-6. The Clear button should reset the size to Large (check the `r3` radio) and clear all checkboxes
+1. **Start with the Shout warm-up** — it's one addEventListener with simple logic
+2. **Wire your buttons at the bottom of script.js** — after all function code
+3. **Test edge cases** — what happens with no toppings? With all toppings?
+4. **Check your math** — Large ($12.50) + 2 toppings ($1.00) + Dine In ($0) = $13.50
+5. **Use `.toFixed(2)`** — always format the total to 2 decimal places
 
 ---
 
 ## FAQ
 
-**Q: Why do I get "Cannot read properties of null" when I add an event listener?**
-Your script runs before the HTML is loaded. Add `defer` to your script tag or move the `<script>` tag to the bottom of the `<body>`.
+**Q: What's wrong with onclick?**
+Inline `onclick` attributes mix HTML and JavaScript. `addEventListener` keeps them separate, which is cleaner and more maintainable. Professional code uses `addEventListener`.
 
-**Q: The test says I am using onclick — but I am not.**
-Check your `index.html` carefully. If any button has `onclick="..."` in the HTML, remove it and use `addEventListener` in your JavaScript instead.
+**Q: How do I uncheck all checkboxes?**
+Loop through them and set each one's `.checked` to `false`.
 
-**Q: What should the Clear button do exactly?**
-Reset the name input to empty, uncheck all toppings, set the size back to Large (r3 checked), set service to dine-in, and clear the output paragraph.
+**Q: How do I set a radio button to checked?**
+Set its `.checked` property to `true`: `document.getElementById("r3").checked = true;`
 
-**Q: Do I need to display the customer's name in the output?**
-The autograder does not check for the name in the output, but it is good practice to include it. Focus on getting the total calculation correct first.
-
-**Q: How do I format the total as "$13.50"?**
-Use: `"$" + total.toFixed(2)`
+**Q: Why does my total show wrong numbers?**
+Make sure you're using `parseFloat()` on the radio button value. Without it, you might be doing string concatenation instead of math.
 
 ---
 
-View all assignments and scoring breakdowns at [csplusplus.com/js-tests](https://csplusplus.com/js-tests)
+View all assignments at [csplusplus.com/js-tests](https://csplusplus.com/js-tests)
 
 *CS++ — AP Computer Science Principles — [csplusplus.com](https://csplusplus.com)*

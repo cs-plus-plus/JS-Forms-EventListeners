@@ -5,18 +5,27 @@
     <title>Unit 8.7 – Forms &amp; Event Listeners</title>
 </head>
 <body>
-    <h1>Unit 8.7 – Pizza Builder</h1>
+    <h1>Unit 8.7 – Forms &amp; Event Listeners</h1>
 
-    <h3>Your Name</h3>
+    <h3>Warm-Up: Shout It!</h3>
+    <input type="text" id="shoutInput" placeholder="Type something" />
+    <button id="btnShout">Shout</button>
+    <div id="outShout"></div>
+
+    <hr>
+
+    <h3>Pizza Builder</h3>
+
+    <h4>Your Name</h4>
     <input type="text" id="myInput" placeholder="Enter your name" />
 
-    <h3>Size</h3>
+    <h4>Size</h4>
     <input type="radio" name="rg" id="r1" value="7.50"><label for="r1">Small ($7.50)</label><br>
     <input type="radio" name="rg" id="r2" value="10.00"><label for="r2">Medium ($10.00)</label><br>
     <input type="radio" name="rg" id="r3" value="12.50" checked><label for="r3">Large ($12.50)</label><br>
     <input type="radio" name="rg" id="r4" value="15.00"><label for="r4">XL ($15.00)</label>
 
-   <h3>Toppings ($0.50 each)</h3>
+    <h4>Toppings ($0.50 each)</h4>
     <input type="checkbox" name="cb" id="cb1"><label for="cb1">Pepperoni</label><br>
     <input type="checkbox" name="cb" id="cb2"><label for="cb2">Sausage</label><br>
     <input type="checkbox" name="cb" id="cb3"><label for="cb3">Mushrooms</label><br>
@@ -26,7 +35,7 @@
     <input type="checkbox" name="cb" id="cb7"><label for="cb7">Bacon</label><br>
     <input type="checkbox" name="cb" id="cb8"><label for="cb8">Pineapple</label>
 
-    <h3>Service</h3>
+    <h4>Service</h4>
     <select id="serviceSelect">
         <option value="dinein" selected>Dine In ($0.00)</option>
         <option value="takeout">Take Out ($1.50)</option>
@@ -37,7 +46,7 @@
     <button id="btnCalc">Calculate Total</button>
     <button id="clearBtn">Clear</button>
 
-    <h3>Order Summary</h3>
+    <h4>Order Summary</h4>
     <p id="myPara"></p>
 
     <script src="script.js"></script>
