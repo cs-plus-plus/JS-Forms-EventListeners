@@ -186,7 +186,7 @@ jobs:
       # === Graded steps (sum to 100) ===
       - id: t_shout
         name: shout warm up
-        uses: classroom-resources/autograding-command-grader@v1
+        uses: cs-plus-plus/autograding-command-grader@v1
         with:
           test-name: shout warm up
           setup-command: echo "ready"
@@ -196,7 +196,7 @@ jobs:
 
       - id: t_no_onclick
         name: no onclick in HTML
-        uses: classroom-resources/autograding-command-grader@v1
+        uses: cs-plus-plus/autograding-command-grader@v1
         with:
           test-name: no onclick in HTML
           setup-command: echo "ready"
@@ -206,7 +206,7 @@ jobs:
 
       - id: t_addeventlistener
         name: uses addEventListener
-        uses: classroom-resources/autograding-command-grader@v1
+        uses: cs-plus-plus/autograding-command-grader@v1
         with:
           test-name: uses addEventListener
           setup-command: echo "ready"
@@ -216,7 +216,7 @@ jobs:
 
       - id: t_elements
         name: required elements exist
-        uses: classroom-resources/autograding-command-grader@v1
+        uses: cs-plus-plus/autograding-command-grader@v1
         with:
           test-name: required elements exist
           setup-command: echo "ready"
@@ -226,7 +226,7 @@ jobs:
 
       - id: t_large_2
         name: large plus 2 toppings dine in
-        uses: classroom-resources/autograding-command-grader@v1
+        uses: cs-plus-plus/autograding-command-grader@v1
         with:
           test-name: large plus 2 toppings dine in
           setup-command: echo "ready"
@@ -236,7 +236,7 @@ jobs:
 
       - id: t_small_delivery
         name: small no toppings delivery
-        uses: classroom-resources/autograding-command-grader@v1
+        uses: cs-plus-plus/autograding-command-grader@v1
         with:
           test-name: small no toppings delivery
           setup-command: echo "ready"
@@ -246,7 +246,7 @@ jobs:
 
       - id: t_clear
         name: clear resets form
-        uses: classroom-resources/autograding-command-grader@v1
+        uses: cs-plus-plus/autograding-command-grader@v1
         with:
           test-name: clear resets form
           setup-command: echo "ready"
@@ -298,7 +298,7 @@ jobs:
           echo "T_CLEAR_RESULTS=${{ steps.t_clear.outputs.result }}"                     >> "$GITHUB_ENV"
 
       - name: Report grades
-        uses: classroom-resources/autograding-grading-reporter@v1
+        uses: cs-plus-plus/autograding-grading-reporter@v1
         with:
           runners: 't_shout,t_no_onclick,t_addeventlistener,t_elements,t_large_2,t_small_delivery,t_clear'
           token: ${{ github.token }}
