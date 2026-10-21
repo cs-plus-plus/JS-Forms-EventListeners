@@ -91,6 +91,16 @@ jobs:
             return dom;
           }
 
+          // script.js with its comment lines removed. The STEP comments name the
+          // very things these checks look for, so a check of the whole file would
+          // pass on untouched starter code.
+          function codeLines() {
+            return source.split('\n')
+              .map(function(line) { return line.trim(); })
+              .filter(function(line) { return !line.startsWith('//') && !line.startsWith('*'); })
+              .join('\n');
+          }
+
           describe('Unit 8.7 – Forms & Event Listeners', function() {
             var dom, window, document;
             beforeAll(async function() {
@@ -117,7 +127,7 @@ jobs:
             });
 
             test('uses addEventListener', function() {
-              expect(source).toMatch(/addEventListener\s*\(/);
+              expect(codeLines()).toMatch(/addEventListener\s*\(/);
             });
 
             test('required elements exist', function() {

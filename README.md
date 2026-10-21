@@ -159,7 +159,7 @@ The Clear button resets everything:
 |---|------|--------|---------------------------|
 | 1 | Shout warm-up | 15 | "hello" → "HELLO!" in output |
 | 2 | No onclick in HTML | 10 | btnCalc, clearBtn, btnShout have no onclick attribute |
-| 3 | Uses addEventListener | 5 | Source code contains `addEventListener` |
+| 3 | Uses addEventListener | 5 | Your code (not a comment) contains `addEventListener(` |
 | 4 | Required elements exist | 10 | All expected IDs and form elements |
 | 5 | Large + 2 toppings dine-in = $13.50 | 20 | Price calculation |
 | 6 | Small + no toppings + delivery = $10.50 | 20 | Price calculation |
