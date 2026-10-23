@@ -25,7 +25,7 @@
 //         b) Convert the text to uppercase using .toUpperCase()
 //         c) Add "!" to the end
 //         d) Display the result in the element with ID "outShout"
-//            using .textContent
+//            using .innerHTML
 //
 //         Example: "hello" → "HELLO!"
 
@@ -82,4 +82,4 @@
 //         b) Set the Large radio (id "r3") to checked = true
 //         c) Uncheck ALL topping checkboxes (loop through them)
 //         d) Set the service dropdown value to "dinein"
-//         e) Set the output paragraph textContent to ""
+//         e) Set the output paragraph innerHTML to ""

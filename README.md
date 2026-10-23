@@ -46,7 +46,7 @@ let name = document.getElementById("myInput").value;
 To display text on the page:
 
 ```javascript
-document.getElementById("output").textContent = "Hello!";
+document.getElementById("output").innerHTML = "Hello!";
 ```
 
 ---
