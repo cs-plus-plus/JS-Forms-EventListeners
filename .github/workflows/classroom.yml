@@ -103,12 +103,15 @@ jobs:
 
           describe('Unit 8.7 – Forms & Event Listeners', function() {
             var dom, window, document;
-            beforeAll(async function() {
+            // A fresh page for every test. Each graded step runs ONE test on
+            // its own page, so a shared page let the summary pass Clear only
+            // because Calculate had been clicked first.
+            beforeEach(async function() {
               dom = await loadDOM();
               window = dom.window;
               document = window.document;
             });
-            afterAll(function() { if (dom) dom.window.close(); });
+            afterEach(function() { if (dom) dom.window.close(); });
 
             test('shout warm up', async function() {
               setVal(document, 'shoutInput', 'hello');
